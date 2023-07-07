@@ -12,6 +12,8 @@ MagneticStatus: Open
 
 ## Decoder code in decoder package
 
+В документации написано что формат данных Temperature + Humidity + Status. Но я решил что не будет лишним сделать так если очередь этих данных будет разной. Также реализовано так что не будет трудно подстроить новый код если добавить еще данные(Напр. water leakage status)
+
 ## How to run tests
 
 ```
