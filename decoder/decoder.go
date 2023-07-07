@@ -3,7 +3,6 @@ package decoder
 import (
 	"fmt"
 	"strconv"
-	"strings"
 )
 
 type Result struct {
@@ -19,42 +18,67 @@ const (
 )
 
 func Decode(hex string) (*Result, error) {
-	tempIndex := strings.Index(hex, temperatureChannelType)
-	if tempIndex < 0 {
-		return nil, ErrTemperatureNotFound
+	if len(hex) != 20 {
+		return nil, ErrLenNotCorrect
 	}
 
-	tempValue, err := hexToDecimal(fmt.Sprintf("%s%s", hex[tempIndex+6:tempIndex+8], hex[tempIndex+4:tempIndex+6]))
-	if err != nil {
-		return nil, err
-	}
+	var (
+		temperature    float64
+		humidity       float64
+		magneticStatus string
+		err            error
+	)
 
-	temperature := float64(tempValue) * 0.1
+Loop:
+	for {
+		if len(hex) < 4 {
+			return nil, ErrDataFormat
+		}
 
-	humIndex := strings.Index(hex, humidityChannelType)
-	if humIndex < 0 {
-		return nil, ErrHumidityNotFound
-	}
+		switch hex[0:4] {
+		case temperatureChannelType:
+			if len(hex) < 8 {
+				return nil, ErrDataFormat
+			}
 
-	humValue, err := hexToDecimal(hex[humIndex+4 : humIndex+6])
-	if err != nil {
-		return nil, err
-	}
+			temperature, err = hexToTemperature(hex[0:8])
+			if len(hex) == 8 {
+				break Loop
+			}
 
-	humidity := float64(humValue) * 0.5
+			hex = hex[8:]
 
-	magsIndex := strings.Index(hex, magneticStatusChannelType)
-	if magsIndex < 0 {
-		return nil, ErrMagneticStatusNotFound
-	}
+		case humidityChannelType:
+			if len(hex) < 6 {
+				return nil, ErrDataFormat
+			}
 
-	magneticStatus := ""
-	if hex[magsIndex+4:magsIndex+6] == "00" {
-		magneticStatus = "Close"
-	} else if hex[magsIndex+4:magsIndex+6] == "01" {
-		magneticStatus = "Open"
-	} else {
-		return nil, ErrMagneticStatusNotFound
+			humidity, err = hexToHumidity(hex[0:6])
+			if len(hex) == 6 {
+				break Loop
+			}
+
+			hex = hex[6:]
+
+		case magneticStatusChannelType:
+			if len(hex) < 6 {
+				return nil, ErrDataFormat
+			}
+
+			magneticStatus, err = hexToMagneticStatus(hex[0:6])
+			if len(hex) == 6 {
+				break Loop
+			}
+
+			hex = hex[6:]
+
+		default:
+			return nil, ErrDataFormat
+		}
+
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return &Result{
@@ -64,10 +88,48 @@ func Decode(hex string) (*Result, error) {
 	}, nil
 }
 
+func hexToTemperature(hex string) (float64, error) {
+	tempValue, err := hexToDecimal(fmt.Sprintf("%s%s", hex[6:8], hex[4:6]))
+	if err != nil {
+		return 0, err
+	}
+
+	temperature := float64(tempValue) * 0.1
+
+	return temperature, nil
+}
+
+func hexToHumidity(hex string) (float64, error) {
+	humValue, err := hexToDecimal(hex[4:6])
+	if err != nil {
+		return 0, err
+	}
+
+	humidity := float64(humValue) * 0.5
+	return humidity, nil
+}
+
+func hexToMagneticStatus(hex string) (string, error) {
+	magneticStatus := ""
+	if hex[4:6] == "00" {
+		magneticStatus = "Close"
+	} else if hex[4:6] == "01" {
+		magneticStatus = "Open"
+	} else {
+		return magneticStatus, ErrDataFormat
+	}
+
+	return magneticStatus, nil
+}
+
 func hexToDecimal(hex string) (int, error) {
 	decimal, err := strconv.ParseInt(hex, 16, 32)
 	if err != nil {
 		return 0, err
+	}
+
+	if len(hex) == 4 && hex[0] >= '8' {
+		decimal -= 65536
 	}
 
 	return int(decimal), err
