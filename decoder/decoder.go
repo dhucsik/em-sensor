@@ -42,6 +42,10 @@ Loop:
 			}
 
 			temperature, err = hexToTemperature(hex[0:8])
+			if err != nil {
+				return nil, err
+			}
+
 			if len(hex) == 8 {
 				break Loop
 			}
@@ -54,6 +58,10 @@ Loop:
 			}
 
 			humidity, err = hexToHumidity(hex[0:6])
+			if err != nil {
+				return nil, err
+			}
+
 			if len(hex) == 6 {
 				break Loop
 			}
@@ -66,6 +74,10 @@ Loop:
 			}
 
 			magneticStatus, err = hexToMagneticStatus(hex[0:6])
+			if err != nil {
+				return nil, err
+			}
+
 			if len(hex) == 6 {
 				break Loop
 			}
@@ -74,10 +86,6 @@ Loop:
 
 		default:
 			return nil, ErrDataFormat
-		}
-
-		if err != nil {
-			return nil, err
 		}
 	}
 
